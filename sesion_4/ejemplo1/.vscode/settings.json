@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "context.h": "c",
+    "primitivos.h": "c"
+  }
+}

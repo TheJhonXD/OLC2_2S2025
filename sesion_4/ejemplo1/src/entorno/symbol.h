@@ -13,7 +13,7 @@ typedef struct
     int i;
     double f;
     int b;
-    const char *s;
+    char *s;
   } val;
 } Symbol;
 

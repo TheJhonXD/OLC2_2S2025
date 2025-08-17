@@ -31,9 +31,11 @@
 %union {
   double     num;
   NodoBase*  node;
+  char*      str;
 }
 
 %token <num> NUMBER
+%token <str> STRING
 %token PRINT
 
 %left '+' '-'
@@ -76,6 +78,9 @@ expr
     int i = (int)$1;
     if ((double)i == $1) $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymInt(@1.first_line,@1.first_column, i));
     else  $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymFloat(@1.first_line,@1.first_column, $1));
+  }
+  | STRING {
+    $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymStr(@1.first_line,@1.first_column,$1));
   }
   ;
 

@@ -6,6 +6,10 @@
   #include "ast/expresiones/primitivos.h"
   #include "ast/expresiones/operacion.h"
   #include "ast/sentencias/print.h"
+  #include "ast/sentencias/declaration.h"
+  #include "ast/sentencias/assigment.h"
+  #include "ast/expresiones/variable.h"
+
 
   extern int yylex(void);
   void yyerror(const char *s);
@@ -32,17 +36,20 @@
   double     num;
   NodoBase*  node;
   char*      str;
+  int tipo;
 }
 
 %token <num> NUMBER
-%token <str> STRING
+%token <str> STRING, ID
+%token  INTEGER, FLOAT, TP_STRING, BOOLEAN
 %token PRINT
 
 %left '+' '-'
 %left '*' '/'
 %right UMINUS
 
-%type <node> program lines line expr
+%type <node> program lines line expr, declaration, assigment
+%type <tipo> tipo
 %start program
 
 %%
@@ -54,17 +61,36 @@ program
 lines
   : /* vacío */
   | lines line
-  | lines end
+  | line
   ;
 
 line
   : expr end                 { code_push($1); }
   | PRINT '(' expr ')' end   { code_push((NodoBase*)NewPrint(@1.first_line,@1.first_column,$3)); }
+  | declaration end          { code_push($1); }
+  | assigment end            { code_push($1); }
   ;
 
 end
-  : '\n'
-  | ';'
+  : ';'
+  ;
+
+declaration
+  : tipo ID '=' expr {
+    $$ = (NodoBase*)NewDeclaration(@1.first_line,@1.first_column,$2,$1,$4);
+  }
+  ;
+
+assigment
+  : ID '=' expr {
+    $$ = (NodoBase*)NewAssigment(@1.first_line,@1.first_column,$1,$3);
+  }
+
+tipo
+  : INTEGER   { $$ = T_INTEGER; }
+  | FLOAT    { $$ = T_FLOAT; }
+  | TP_STRING { $$ = T_STRING; }
+  | BOOLEAN  { $$ = T_BOOLEAN; }
   ;
 
 expr
@@ -81,6 +107,9 @@ expr
   }
   | STRING {
     $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymStr(@1.first_line,@1.first_column,$1));
+  }
+  | ID {
+    $$ = (NodoBase*)NewVariable(@1.first_line,@1.first_column,$1);
   }
   ;
 

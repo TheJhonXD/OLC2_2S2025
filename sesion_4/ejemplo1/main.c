@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "entorno/ast.h"
 #include "ast/AbstractTerminal.h"
+#include "entorno/environment.h"
 
 /* del parser */
 int yyparse(void);
@@ -42,7 +43,9 @@ int main(int argc, char **argv)
     /* ejecutar: recorrer instrucciones */
     AST ast;
     AST_Init(&ast);
-    void *env = NULL; /* Esto queda pendiente */
+    Environment global;
+    Env_init(&global, NULL, "GLOBAL");
+    void *env = &global; /* Esto queda pendiente */
 
     for (int i = 0; i < g_code_len; ++i)
     {
@@ -67,6 +70,7 @@ int main(int argc, char **argv)
     free(g_code);
     g_code = NULL;
     g_code_len = 0;
+    Env_free(&global);
 
     return 0;
 }

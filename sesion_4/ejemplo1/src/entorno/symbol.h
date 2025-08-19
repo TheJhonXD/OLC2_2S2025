@@ -19,34 +19,31 @@ typedef struct
 
 static inline Symbol SymInt(int lin, int col, int v)
 {
-  Symbol s = {lin, col, T_INTEGER};
+  Symbol s = {lin, col, T_INTEGER, {0}};
   s.val.i = v;
   return s;
 }
 static inline Symbol SymFloat(int lin, int col, double v)
 {
-  Symbol s = {lin, col, T_FLOAT};
+  Symbol s = {lin, col, T_FLOAT, {0}};
   s.val.f = v;
   return s;
 }
 static inline Symbol SymBool(int lin, int col, int v)
 {
-  Symbol s = {lin, col, T_BOOLEAN};
+  Symbol s = {lin, col, T_BOOLEAN, {0}};
   s.val.b = !!v;
   return s;
 }
 static inline Symbol SymStr(int lin, int col, const char *v)
 {
-  Symbol s = {lin, col, T_STRING};
+  Symbol s = {lin, col, T_STRING, {0}};
   s.val.s = v;
   return s;
 }
 static inline Symbol SymNull(int lin, int col)
 {
-  Symbol s = {0};
-  s.lin = lin;
-  s.col = col;
-  s.tipo = T_NULL;
+  Symbol s = {lin, col, T_NULL, {0}};
   return s;
 }
 

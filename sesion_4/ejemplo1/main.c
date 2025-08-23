@@ -55,6 +55,7 @@ int main(int argc, char **argv)
     /* imprimir salida o errores */
     if (ast.errors[0])
     {
+        fputs(ast.prints, stdout);
         fputs(ast.errors, stderr);
     }
     else

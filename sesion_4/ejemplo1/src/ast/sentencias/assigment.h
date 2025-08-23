@@ -10,4 +10,6 @@ typedef struct
   NodoBase *expr;
 } Assigment;
 
+Assigment *NewAssigment(int lin, int col, char *id_aux, NodoBase *expr);
+
 #endif

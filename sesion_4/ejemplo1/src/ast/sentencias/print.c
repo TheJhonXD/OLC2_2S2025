@@ -22,6 +22,9 @@ static Symbol Ejecutar(NodoBase *self, AST *ast, void *env)
     case T_STRING:
         snprintf(buf, sizeof buf, "%s\n", s.val.s ? s.val.s : "");
         break;
+    case T_CHAR:
+        snprintf(buf, sizeof buf, "%c\n", s.val.c);
+        break;
     default:
         snprintf(buf, sizeof buf, "null\n");
         break;

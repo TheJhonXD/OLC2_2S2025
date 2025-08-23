@@ -2,6 +2,7 @@
 #define SYMBOL_H
 
 #include "entorno/tipos.h"
+#include "helpers/helper.h"
 
 typedef struct
 {
@@ -14,6 +15,7 @@ typedef struct
     double f;
     int b;
     char *s;
+    char c;
   } val;
 } Symbol;
 
@@ -38,7 +40,13 @@ static inline Symbol SymBool(int lin, int col, int v)
 static inline Symbol SymStr(int lin, int col, const char *v)
 {
   Symbol s = {lin, col, T_STRING, {0}};
-  s.val.s = v;
+  s.val.s = v ? strDuplicate(v) : NULL;
+  return s;
+}
+static inline Symbol SymChar(int lin, int col, char v)
+{
+  Symbol s = {lin, col, T_CHAR, {0}};
+  s.val.c = v;
   return s;
 }
 static inline Symbol SymNull(int lin, int col)

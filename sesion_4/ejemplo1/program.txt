@@ -1,10 +1,14 @@
 print(1*8*9);
 print(180+1+1+1);
-print("HOLA");
+print("HOLA sdfdsfdsfdsfdsf");
 int x = 2;
-int y = 5;
+int y = 5 + 5;
 int y = 2;
 print(x + 5);
 print(y * 3);
-x = 11 + y;
+x = 11 + y + 5;
+y = 9;
+char abdc = 'h';
+print(abdc);
+int o = 5;
 print (x * y);

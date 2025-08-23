@@ -36,19 +36,21 @@
   double     num;
   NodoBase*  node;
   char*      str;
+  char       ch;
   int tipo;
 }
 
 %token <num> NUMBER
-%token <str> STRING, ID
-%token  INTEGER, FLOAT, TP_STRING, BOOLEAN
+%token <str> STRING ID
+%token <ch> CHAR
+%token  INTEGER FLOAT TP_STRING BOOLEAN TP_CHAR
 %token PRINT
 
 %left '+' '-'
 %left '*' '/'
 %right UMINUS
 
-%type <node> program lines line expr, declaration, assigment
+%type <node> program line expr declaration assigment
 %type <tipo> tipo
 %start program
 
@@ -91,6 +93,7 @@ tipo
   | FLOAT    { $$ = T_FLOAT; }
   | TP_STRING { $$ = T_STRING; }
   | BOOLEAN  { $$ = T_BOOLEAN; }
+  | TP_CHAR    { $$ = T_CHAR; }
   ;
 
 expr
@@ -107,6 +110,9 @@ expr
   }
   | STRING {
     $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymStr(@1.first_line,@1.first_column,$1));
+  }
+  | CHAR {
+    $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymChar(@1.first_line,@1.first_column,$1));
   }
   | ID {
     $$ = (NodoBase*)NewVariable(@1.first_line,@1.first_column,$1);

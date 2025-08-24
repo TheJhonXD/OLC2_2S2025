@@ -13,7 +13,6 @@ static Symbol Ejecutar(NodoBase *self, AST *ast, void *env)
   Symbol v = NodoBase_Ejecutar(d->expr, ast, env);
 
   /* validación de tipo si se declaró explícito */
-  printf("TIPO: %d\n", v.tipo);
   if (v.tipo != d->tipo)
   {
     printf("Los tipos de datos son incorrectos\n");

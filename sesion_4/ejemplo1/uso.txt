@@ -1,3 +1,10 @@
 .\build\calc.exe program.txt
 
 program.txt es el archivo de entrada
+
+
+/---------------------------------/
+Instalación de GTK3
+
+sudo apt update
+sudo apt install libgtk-3-dev build-essential

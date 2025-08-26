@@ -41,6 +41,17 @@ static Symbol Ejecutar(NodoBase *self, AST *ast, void *env)
     }
     return SymFloat(o->base.lin, o->base.col, asFlt(a) / y);
   }
+  if (strcmp(o->op, "unario") == 0)
+  {
+    if (isInt(a))
+      return SymInt(o->base.lin, o->base.col, -a.val.i);
+    return SymFloat(o->base.lin, o->base.col, -asFlt(a));
+  }
+
+  if (strcmp(o->op, ">") == 0)
+  {
+    return SymBool(o->base.lin, o->base.col, a.val.i > b.val.i);
+  }
 
   AST_SetError(ast, "ERROR: Operador no soportado");
   return SymNull(o->base.lin, o->base.col);

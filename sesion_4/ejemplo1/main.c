@@ -9,8 +9,7 @@ int yyparse(void);
 extern FILE *yyin;
 
 /* arreglo global de instrucciones construido por el parser */
-extern struct NodoBase **g_code;
-extern int g_code_len;
+extern struct NodoBase *g_root;
 
 int main(int argc, char **argv)
 {
@@ -45,12 +44,8 @@ int main(int argc, char **argv)
     AST_Init(&ast);
     Environment global;
     Env_init(&global, NULL, "GLOBAL");
-    void *env = &global; /* Esto queda pendiente */
-
-    for (int i = 0; i < g_code_len; ++i)
-    {
-        (void)NodoBase_Ejecutar(g_code[i], &ast, env);
-    }
+    if (g_root)
+        (void)NodoBase_Ejecutar(g_root, &ast, &global);
 
     /* imprimir salida o errores */
     if (ast.errors[0])
@@ -64,13 +59,8 @@ int main(int argc, char **argv)
     }
 
     /* liberar nodos (cada uno tiene el metodo para destruirse) */
-    for (int i = 0; i < g_code_len; ++i)
-    {
-        NodoBase_Destruir(g_code[i]);
-    }
-    free(g_code);
-    g_code = NULL;
-    g_code_len = 0;
+    if (g_root)
+        NodoBase_Destruir(g_root);
     Env_free(&global);
 
     return 0;

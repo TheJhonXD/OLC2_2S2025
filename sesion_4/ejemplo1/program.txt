@@ -12,3 +12,11 @@ char abdc = 'W';
 print(abdc);
 int o = 5;
 print (x * y);
+float g = -1.5;
+boolean h = 7 > 6;
+if ( 7 > 6) {
+  int x = 5;
+  print("hola");
+  print(x);
+}
+print(x);

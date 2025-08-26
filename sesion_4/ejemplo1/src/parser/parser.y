@@ -9,14 +9,16 @@
   #include "ast/sentencias/declaration.h"
   #include "ast/sentencias/assigment.h"
   #include "ast/expresiones/variable.h"
+  #include "ast/sentencias/if.h"
+  #include "ast/sentencias/block.h"
 
 
   extern int yylex(void);
   void yyerror(const char *s);
 
   /* Lista global de instrucciones */
-  NodoBase** g_code = NULL;
-  int        g_code_len = 0;
+  NodoBase* g_root = NULL;
+  /*int        g_code_len = 0;
   int        g_code_cap = 0;
 
   static void code_push(NodoBase* n){
@@ -26,7 +28,7 @@
       g_code = (NodoBase**)realloc(g_code, g_code_cap * sizeof(NodoBase*));
     }
     g_code[g_code_len++] = n;
-  }
+  }*/
 %}
 
 %define parse.error verbose
@@ -37,40 +39,48 @@
   NodoBase*  node;
   char*      str;
   char       ch;
+  int       b;
   int tipo;
 }
 
 %token <num> NUMBER
 %token <str> STRING ID
 %token <ch> CHAR
+%token <b> TRUE FALSE
 %token  INTEGER FLOAT TP_STRING BOOLEAN TP_CHAR
-%token PRINT
+%token PRINT IF
 
+%left '>' '<'
 %left '+' '-'
 %left '*' '/'
 %right UMINUS
 
-%type <node> program line expr declaration assigment
+%type <node> program lines line expr declaration assigment block
 %type <tipo> tipo
 %start program
 
 %%
 
 program
-  : lines                { /* code en g_code[] */ }
+  : lines { g_root = $1; $$ = $1; }
   ;
 
 lines
-  : /* vacío */
-  | lines line
-  | line
+  : /* vacío */ { $$ = (NodoBase*)NewBlock(@$.first_line, @$.first_column); }
+  | lines line  { Block_add((Block*)$1, $2); $$ = $1; }
   ;
 
 line
-  : expr end                 { code_push($1); }
-  | PRINT '(' expr ')' end   { code_push((NodoBase*)NewPrint(@1.first_line,@1.first_column,$3)); }
-  | declaration end          { code_push($1); }
-  | assigment end            { code_push($1); }
+  : expr end                 { $$ = $1; }
+  | PRINT '(' expr ')' end   { $$ = (NodoBase*)NewPrint(@1.first_line,@1.first_column,$3); }
+  | declaration end          { $$ = $1; }
+  | assigment end            { $$ = $1; }
+  | block                    { $$ = $1; }
+  | IF '(' expr ')' block    { $$ = (NodoBase*)NewIf(@1.first_line,@1.first_column,$3,$5); }
+  ;
+
+block 
+  : '{' lines '}' {$$ = $2;}
   ;
 
 end
@@ -101,8 +111,12 @@ expr
   | expr '-' expr            { $$ = (NodoBase*)NewOperation(@2.first_line,@2.first_column,$1,"-",$3); }
   | expr '*' expr            { $$ = (NodoBase*)NewOperation(@2.first_line,@2.first_column,$1,"*",$3); }
   | expr '/' expr            { $$ = (NodoBase*)NewOperation(@2.first_line,@2.first_column,$1,"/",$3); }
-  | '-' expr %prec UMINUS    { $$ = (NodoBase*)NewOperation(@1.first_line,@1.first_column, (NodoBase*)NewPrimitive(@2.first_line,@2.first_column, SymInt(@2.first_line,@2.first_column,0)), "-", $2); }
+  | '-' expr %prec UMINUS    { 
+    $$ = (NodoBase*)NewOperation(@1.first_line,@1.first_column,$2, "unario", NULL); 
+  }
   | '(' expr ')'             { $$ = $2; }
+  | expr '>' expr            { $$ = (NodoBase*)NewOperation(@2.first_line,@2.first_column,$1,">",$3); }
+  | expr '<' expr            { $$ = (NodoBase*)NewOperation(@2.first_line,@2.first_column,$1,"<",$3); }
   | NUMBER {
     int i = (int)$1;
     if ((double)i == $1) $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymInt(@1.first_line,@1.first_column, i));
@@ -116,6 +130,12 @@ expr
   }
   | ID {
     $$ = (NodoBase*)NewVariable(@1.first_line,@1.first_column,$1);
+  }
+  | TRUE {
+    $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymBool(@1.first_line,@1.first_column,1));
+  }
+  | FALSE {
+    $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymBool(@1.first_line,@1.first_column,0));
   }
   ;
 

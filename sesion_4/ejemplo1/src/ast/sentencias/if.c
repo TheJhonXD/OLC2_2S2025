@@ -23,12 +23,11 @@ static Symbol Ejecutar(NodoBase *self, AST *ast, void *env)
   {
     Environment if_stmt;
     Env_init(&if_stmt, NULL, "IF_STMT");
-    void *env_if = &if_stmt;
-    // Ejecutar bloque
-    for ()
+    (void)NodoBase_Ejecutar(d->bloque, ast, &if_stmt);
+    Env_free(&if_stmt);
   }
 
-  return v;
+  return SymNull(self->lin, self->col);
 }
 
 static void Destruir(NodoBase *self)

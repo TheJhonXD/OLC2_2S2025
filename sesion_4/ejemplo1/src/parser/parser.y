@@ -67,7 +67,7 @@ program
 
 lines
   : /* vacío */ { $$ = (NodoBase*)NewBlock(@$.first_line, @$.first_column); }
-  | lines line  { Block_add((Block*)$1, $2); $$ = $1; }
+  | lines line  { addBlockStmt((Block*)$1, $2); $$ = $1; }
   ;
 
 line

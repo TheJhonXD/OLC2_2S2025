@@ -6,6 +6,12 @@
 
 typedef struct
 {
+  int tam;
+  struct Symbol_ *items;
+} ArrayType;
+
+typedef struct Symbol_
+{
   int lin;
   int col;
   TipoExpresion tipo;
@@ -16,6 +22,7 @@ typedef struct
     int b;
     char *s;
     char c;
+    ArrayType *arr;
   } val;
 } Symbol;
 

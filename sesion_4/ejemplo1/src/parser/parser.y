@@ -11,6 +11,10 @@
   #include "ast/expresiones/variable.h"
   #include "ast/sentencias/if.h"
   #include "ast/sentencias/block.h"
+  #include "ast/sentencias/params.h"
+  #include "ast/sentencias/function.h"
+  #include "ast/expresiones/callFunc.h"
+  #include "ast/expresiones/args.h"
 
 
   extern int yylex(void);
@@ -37,6 +41,8 @@
 %union {
   double     num;
   NodoBase*  node;
+  struct ArgList* args;  /* lista de argumentos */
+  struct Param*   plist; /* lista de parámetros */
   char*      str;
   char       ch;
   int       b;
@@ -48,15 +54,17 @@
 %token <ch> CHAR
 %token <b> TRUE FALSE
 %token  INTEGER FLOAT TP_STRING BOOLEAN TP_CHAR
-%token PRINT IF
+%token PRINT IF FUNC
 
 %left '>' '<'
 %left '+' '-'
 %left '*' '/'
 %right UMINUS
 
-%type <node> program lines line expr declaration assigment block
+%type <node> program lines line expr declaration assigment block function callFunction
 %type <tipo> tipo
+%type <plist> params paramlist
+%type <args> args arglist
 %start program
 
 %%
@@ -77,6 +85,7 @@ line
   | assigment end            { $$ = $1; }
   | block                    { $$ = $1; }
   | IF '(' expr ')' block    { $$ = (NodoBase*)NewIf(@1.first_line,@1.first_column,$3,$5); }
+  | function                 { $$ = $1; }  
   ;
 
 block 
@@ -86,6 +95,29 @@ block
 end
   : ';'
   ;
+
+function
+  : FUNC tipo ID '(' params ')' block {
+    $$ = (NodoBase*)NewFunction(@1.first_line, @1.first_column, $3, $2, (Param*)$5, $7);
+  }
+  ;
+
+params
+  : /* vacío */ { $$ = NULL; }
+  | paramlist { $$ = $1; }
+  ;
+
+paramlist
+  : tipo ID {
+    Param *p = NewParam(@1.first_line, @1.first_column, $2, $1);
+    $$ = p;
+  }
+  | tipo ID ',' paramlist {
+    Param *p = NewParam(@1.first_line, @1.first_column, $2, $1);
+    p->next = $4;
+    $$ = p;
+  }
+;
 
 declaration
   : tipo ID '=' expr {
@@ -117,6 +149,7 @@ expr
   | '(' expr ')'             { $$ = $2; }
   | expr '>' expr            { $$ = (NodoBase*)NewOperation(@2.first_line,@2.first_column,$1,">",$3); }
   | expr '<' expr            { $$ = (NodoBase*)NewOperation(@2.first_line,@2.first_column,$1,"<",$3); }
+  | callFunction             { $$ = $1; }
   | NUMBER {
     int i = (int)$1;
     if ((double)i == $1) $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymInt(@1.first_line,@1.first_column, i));
@@ -137,6 +170,22 @@ expr
   | FALSE {
     $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymBool(@1.first_line,@1.first_column,0));
   }
+  ;
+
+callFunction
+  : ID '(' args ')' {
+    $$ = (NodoBase*)NewCallFunc(@1.first_line, @1.first_column, $1, $3);
+  }
+  ;
+
+args
+  : /* vacío */ { $$ = NULL; }
+  | arglist     { $$ = $1; }
+  ;
+
+arglist
+  : expr             { $$ = NewArgList($1, NULL); }
+  | expr ',' arglist { $$ = NewArgList($1, $3); }
   ;
 
 %%

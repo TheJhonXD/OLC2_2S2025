@@ -20,3 +20,26 @@ if ( 7 > 6) {
   print(x);
 }
 print(x);
+print("********************** Funciones **********************");
+public int prueba () {
+  print("holitaaaaa");
+  int a = 7;
+  int b = 9;
+  if (b > a) {
+    print("Si entra");
+    print("GOOOOD");
+  }
+  int y = 2;
+  print(y);
+}
+prueba();
+
+print("***************** Funcion con parametros *****************");
+public int suma(int a, int b) {
+  print("SUMITA");
+  print(a + b);
+}
+
+suma(5, 9);
+
+

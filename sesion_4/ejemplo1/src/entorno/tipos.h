@@ -8,7 +8,8 @@ typedef enum
     T_STRING = 2,
     T_BOOLEAN = 3,
     T_NULL = 4,
-    T_CHAR = 5
+    T_CHAR = 5,
+    T_ARRAY = 6
 } TipoExpresion;
 
 #endif

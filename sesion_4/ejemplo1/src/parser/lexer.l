@@ -4,6 +4,7 @@
   typedef struct NodoBase NodoBase;
   #include "parser.tab.h"
 %}
+
 TRU      "true"
 FAL      "false"
 KW_PRINT "print"
@@ -13,6 +14,7 @@ KW_FLOAT "float"
 KW_STR   "string"
 KW_CHAR  "char"
 KW_BOOL     "boolean"
+FUNC      "public"
 DIG   [0-9]
 NUM   {DIG}+(\.{DIG}+)?
 STR   \"([^\\\n]|\\.)*\"
@@ -33,6 +35,8 @@ WS  [ \t\n\r]+
 {TRU}             { return TRUE; }
 {FAL}             { return FALSE; }
 
+{FUNC}            { return FUNC; }
+
 {NUM}                 { yylval.num = atof(yytext); return NUMBER; }
 {STR}                 { yylval.str = strdup(yytext + 1); yylval.str[strlen(yylval.str) - 1] = '\0'; return STRING; }
 {CH}                  { yylval.ch = yytext[1]; return CHAR; }
@@ -41,9 +45,9 @@ WS  [ \t\n\r]+
 
 {WS}                          { /* skip whitespace */ }
 "//".*                        { /* skip comentario de una linea */ }
-"/*"([^*]|\*+[^*/])*\*+"/"    { /* skip comentario multi-linea */ }
+\/\*([^*]|\*+[^*/])*\*\/    { /* skip comentario multi-linea */ }
 [;]                   { return ';'; }
-
+[,]                   { return ','; }
 [(]                   { return '('; }
 [)]                   { return ')'; }
 [{]                   { return '{'; }

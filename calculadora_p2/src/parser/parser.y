@@ -11,7 +11,7 @@
 %union {
   double     num;
   char*      str;
-  char*       temp;    // Para guardar temporales
+  char   temp[32];    // Para guardar temporales
   char       ch;
   int        b;
 }
@@ -57,35 +57,35 @@ expr
       addExpression(temp_resultado, $1, "+", $3);
       
       // Sintetizar el resultado
-      $$ = temp_resultado;
+      strcpy($$, temp_resultado);
   }
   
   | expr '-' expr {
       char* temp_resultado = newTemp();
       addExpression(temp_resultado, $1, "-", $3);
-      $$ = temp_resultado;
+      strcpy($$, temp_resultado);
   }
   
   | expr '*' expr {
       char* temp_resultado = newTemp();
       addExpression(temp_resultado, $1, "*", $3);
-      $$ = temp_resultado;
+      strcpy($$, temp_resultado);
   }
   
   | expr '/' expr {
       char* temp_resultado = newTemp();
       addExpression(temp_resultado, $1, "/", $3);
-      $$ = temp_resultado;
+      strcpy($$, temp_resultado);
   }
   
   | '-' expr %prec UMINUS {
       char* temp_resultado = newTemp();
       addExpression(temp_resultado, "0", "-", $2);  // 0 - expr
-      $$ = temp_resultado;
+      strcpy($$, temp_resultado);
   }
   
   | '(' expr ')' {
-      $$ = $2;  // Solo pasar el temporal
+      strcpy($$, $2);  // Solo pasar el temporal
   }
   
   | NUMBER {
@@ -102,26 +102,26 @@ expr
       
       // Generar asignación: t1 = 42
       addAssign(temp, num_str);
-      $$ = temp;
+      strcpy($$, temp);  // Devolver el temporal
   }
   
   | ID {
       // Generar temporal y cargar la variable
       char* temp = newTemp();
       addAssign(temp, $1);  // t1 = x
-      $$ = temp;
+      strcpy($$, temp);  // Devolver el temporal
   }
   
   | TRUE {
       char* temp = newTemp();
       addAssign(temp, "1");
-      $$ = temp;
+      strcpy($$, temp);  // Devolver el temporal
   }
   
   | FALSE {
       char* temp = newTemp();
       addAssign(temp, "0");
-      $$ = temp;
+      strcpy($$, temp);  // Devolver el temporal
   }
   ;
 

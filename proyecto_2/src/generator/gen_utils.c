@@ -2,45 +2,49 @@
 #include <string.h>
 #include <stdlib.h>
 
-// Obtener registro libre
+// Pedir un registro libre para usarlo
+// ARM64 tiene registros x0 a x30, buscamos uno que no este ocupado
 int allocate_register(RegisterManager *manager)
 {
+  // Empezamos en 1 porque x0 se usa para cosas especiales
   for (int i = 1; i < 31; i++)
   {
-    if (manager->x_registers[i] == 0)
+    if (manager->x_registers[i] == 0) // 0 = libre, 1 = ocupado
     {
-      manager->x_registers[i] = 1;
-      return i;
+      manager->x_registers[i] = 1; // Marcar como ocupado
+      return i;                    // Retornar el numero del registro
     }
   }
-  return -1;
+  return -1; // No hay registros libres (esto seria un error grave)
 }
 
-// Liberar registro
+// Marcar un registro como libre para que se pueda volver a usar
 void free_register(RegisterManager *manager, int reg)
 {
   if (reg >= 0 && reg < 31)
   {
-    manager->x_registers[reg] = 0;
+    manager->x_registers[reg] = 0; // 0 = libre
   }
 }
 
-// Agregar variable a la tabla y retorna el offset donde se guardó
+// Agregar una variable a la tabla de simbolos
+// Retorna el offset (posicion en memoria) donde se va a guardar
 int agregar_variable(CodeGenerator *gen, char *nombre, TipoExpresion tipo)
 {
-  // Verificar si ya existe
+  // Primero revisar si ya existe (para evitar duplicados)
   for (int i = 0; i < gen->var_table->count; i++)
   {
     if (strcmp(gen->var_table->vars[i].nombre, nombre) == 0)
     {
-      return gen->var_table->vars[i].offset; // Ya existe
+      return gen->var_table->vars[i].offset; // Ya existe, retornar su offset
     }
   }
 
-  // Agregar nueva variable
   int indice = gen->var_table->count;
 
-  // Calcular offset: indice * 16 (necesita estar alineado a 16 bytes)
+  // Calcular donde va en memoria
+  // Cada variable ocupa 16 bytes porque ARM64 requiere alineamiento de 16
+  // Variable 0 -> offset 0, variable 1 -> offset 16, variable 2 -> offset 32, etc
   int offset = indice * 16;
 
   gen->var_table->vars[indice].nombre = strdup(nombre);
@@ -51,7 +55,7 @@ int agregar_variable(CodeGenerator *gen, char *nombre, TipoExpresion tipo)
   return offset;
 }
 
-// Buscar variable y retornar su offset
+// Buscar variable por nombre
 int buscar_variable(CodeGenerator *gen, char *nombre)
 {
   for (int i = 0; i < gen->var_table->count; i++)
@@ -61,7 +65,7 @@ int buscar_variable(CodeGenerator *gen, char *nombre)
       return gen->var_table->vars[i].offset;
     }
   }
-  return -1; // Retorna -1 si no lo encontró
+  return -1;
 }
 
 // Agregar string literal

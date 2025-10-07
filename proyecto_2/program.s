@@ -1,59 +1,58 @@
 .global _start
 .text
 
-print_int:
-    mov x8, #64
-    mov x0, #1
-    svc #0
-    ret
-
-print_string:
+printValue:
+    # x1 = valor a imprimir
     mov x8, #64
     mov x0, #1
     svc #0
     ret
 
 _start:
+    sub sp, sp, #1600
     # Declaracion: x
-    sub sp, sp, #8
+    mov x1, #2
     str x1, [sp, #0]
     # Declaracion: y
-    sub sp, sp, #8
-    str x1, [sp, #0]
+    mov x1, #3
+    str x1, [sp, #16]
     # Declaracion: z
-    sub sp, sp, #8
-    str x1, [sp, #0]
+    mov x1, #5
+    str x1, [sp, #32]
     # Asignacion: y
-    str x1, [sp, #0]
+    mov x1, #100
+    str x1, [sp, #16]
     # Print
     ldr x1, [sp, #0]
     mov x1, x1
-    bl print_int
+    bl printValue
     mov x8, #64
     mov x0, #1
     adr x1, newline
     mov x2, #1
     svc #0
     # Print
-    ldr x1, [sp, #0]
+    ldr x1, [sp, #16]
     mov x1, x1
-    bl print_int
+    bl printValue
     mov x8, #64
     mov x0, #1
     adr x1, newline
     mov x2, #1
     svc #0
     # Print
+    adr x1, str_0
     mov x1, x1
-    bl print_int
+    bl printValue
     mov x8, #64
     mov x0, #1
     adr x1, newline
     mov x2, #1
     svc #0
     # Print
+    mov x1, #5
     mov x1, x1
-    bl print_int
+    bl printValue
     mov x8, #64
     mov x0, #1
     adr x1, newline
@@ -67,3 +66,4 @@ _start:
 
 .data
 newline: .ascii "\n"
+str_0: .asciz "Hola"

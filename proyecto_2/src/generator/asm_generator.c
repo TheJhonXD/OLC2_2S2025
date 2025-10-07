@@ -26,26 +26,32 @@ CodeGenerator *init_code_generator(const char *output_filename)
     write_header(gen);
     return gen;
 }
-
-// Header del archivo
+// Escribe el inicio del archivo
 void write_header(CodeGenerator *gen)
 {
+    // .global _start indica que _start es el punto de entrada del programa
     fprintf(gen->output_file, ".global _start\n");
+    // .text es la seccion donde va el codigo ejecutable
     fprintf(gen->output_file, ".text\n\n");
 
-    // Funcion simple para imprimir cualquier valor
+    // Esta es una funcion auxiliar que se llama cada vez que se haga un print
     fprintf(gen->output_file, "printValue:\n");
     fprintf(gen->output_file, "    # x1 = valor a imprimir\n");
-    fprintf(gen->output_file, "    mov x8, #64\n");
-    fprintf(gen->output_file, "    mov x0, #1\n");
-    fprintf(gen->output_file, "    svc #0\n");
-    fprintf(gen->output_file, "    ret\n\n");
+    fprintf(gen->output_file, "    mov x8, #64\n"); // syscall 64 = write
+    fprintf(gen->output_file, "    mov x0, #1\n");  // fd = 1 (stdout)
+    fprintf(gen->output_file, "    svc #0\n");      // ejecutar syscall
+    fprintf(gen->output_file, "    ret\n\n");       // ret = return (volver)
 }
 
-// Generar programa completo
+// Generar todo el programa
 void generate_program(CodeGenerator *gen, NodoBase *root)
 {
+    // _start es donde empieza a ejecutar el programa
     fprintf(gen->output_file, "_start:\n");
+
+    // Reservar espacio en el stack para todas las variables (quemado para 100 variables de 16 bytes)
+    fprintf(gen->output_file, "    sub sp, sp, #1600\n");
+
     generate_statement(gen, root);
     write_footer(gen);
 }

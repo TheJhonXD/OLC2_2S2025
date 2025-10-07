@@ -5,13 +5,15 @@
 #include "ast/expresiones/variable.h"
 #include <string.h>
 
-// Generar expresion
+// Generar codigo para una expresion
+// El resultado se deja en el registro target_reg
 void generate_expression(CodeGenerator *gen, NodoBase *expr, int target_reg)
 {
   if (expr == NULL)
     return;
 
-  if (strcmp(expr->nombre, "Primitivos") == 0)
+  // Ver que tipo de expresion es y generar el codigo apropiado
+  if (strcmp(expr->nombre, "Primitive") == 0) // Numeros, strings, booleanos
   {
     generate_primitive(gen, expr, target_reg);
   }
@@ -19,13 +21,17 @@ void generate_expression(CodeGenerator *gen, NodoBase *expr, int target_reg)
   {
     generate_variable(gen, expr, target_reg);
   }
-  else if (strcmp(expr->nombre, "Operation") == 0)
+  else if (strcmp(expr->nombre, "Operation") == 0) // Operaciones (suma resta multiplicacion, etc)
   {
     generate_operation(gen, expr, target_reg);
   }
+  else if (strcmp(expr->nombre, "CallFunc") == 0)
+  {
+    fprintf(gen->output_file, "    # TODO: CallFunc\n");
+  }
 }
 
-// Primitivos
+// Generar codigo para valores puntuales es decir: 5, "hola", true
 void generate_primitive(CodeGenerator *gen, NodoBase *prim, int target_reg)
 {
   Primitive *p = (Primitive *)prim;
@@ -33,19 +39,23 @@ void generate_primitive(CodeGenerator *gen, NodoBase *prim, int target_reg)
 
   if (s.tipo == T_INTEGER)
   {
+    // Para numero entero: mov x1, #10
     fprintf(gen->output_file, "    mov x%d, #%d\n", target_reg, s.val.i);
   }
   else if (s.tipo == T_BOOLEAN)
   {
+    // Para booleano: true = 1, false = 0
     fprintf(gen->output_file, "    mov x%d, #%d\n", target_reg, s.val.b ? 1 : 0);
   }
   else if (s.tipo == T_STRING)
   {
+    // Los strings se guardarán en la seccion .data, luego cargar su direccion
     add_string_literal(gen, s.val.s);
     fprintf(gen->output_file, "    adr x%d, str_%d\n", target_reg, gen->string_count - 1);
   }
   else if (s.tipo == T_CHAR)
   {
+    // Se convierte a su valor ascii
     fprintf(gen->output_file, "    mov x%d, #%d\n", target_reg, (int)s.val.c);
   }
   else
@@ -54,12 +64,12 @@ void generate_primitive(CodeGenerator *gen, NodoBase *prim, int target_reg)
   }
 }
 
-// Cargar variable
+// Leer el valor de una variable desde memoria
 void generate_variable(CodeGenerator *gen, NodoBase *var, int target_reg)
 {
   Variable *v = (Variable *)var;
 
-  // Buscar offset de la variable
+  // Buscar donde esta guardada la variable
   int offset = buscar_variable(gen, v->id);
 
   if (offset == -1)
@@ -69,85 +79,98 @@ void generate_variable(CodeGenerator *gen, NodoBase *var, int target_reg)
     return;
   }
 
-  // Cargar desde el offset correcto
+  // ldr = load register (cargar desde memoria al registro)
+  // [sp, #offset] = stack pointer + offset
   fprintf(gen->output_file, "    ldr x%d, [sp, #%d]\n", target_reg, offset);
 }
 
-// Operaciones
+// Generar operaciones aritmeticas, comparaciones, logicas
 void generate_operation(CodeGenerator *gen, NodoBase *op, int target_reg)
 {
   Operation *o = (Operation *)op;
 
+  // Dos registros , uno para cada lado de la operacion
   int reg_izq = allocate_register(gen->reg_manager);
   int reg_der = allocate_register(gen->reg_manager);
 
+  // Calcular el lado izquierdo y derecho
   generate_expression(gen, o->izq, reg_izq);
   generate_expression(gen, o->der, reg_der);
 
-  // Segun la operacion
+  // Operaciones aritmeticas basicas
   if (strcmp(o->op, "+") == 0)
   {
+    // add = sumar
     fprintf(gen->output_file, "    add x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
   }
   else if (strcmp(o->op, "-") == 0)
   {
+    // sub = restar
     fprintf(gen->output_file, "    sub x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
   }
   else if (strcmp(o->op, "*") == 0)
   {
+    // mul = multiplicar
     fprintf(gen->output_file, "    mul x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
   }
   else if (strcmp(o->op, "/") == 0)
   {
+    // sdiv = division con signo (signed division)
     fprintf(gen->output_file, "    sdiv x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
   }
   else if (strcmp(o->op, "%") == 0)
   {
-    // Modulo, como no existe se hace así: a % b = a - (a/b)*b
-    fprintf(gen->output_file, "    sdiv x9, x%d, x%d\n", reg_izq, reg_der);
-    fprintf(gen->output_file, "    mul x9, x9, x%d\n", reg_der);
-    fprintf(gen->output_file, "    sub x%d, x%d, x9\n", target_reg, reg_izq);
+    // Modulo o el residuo de la division
+    // arm64 no tiene la operacion de modulo, se calcula así: a % b = a - (a/b)*b
+    fprintf(gen->output_file, "    sdiv x9, x%d, x%d\n", reg_izq, reg_der);   // x9 = a / b
+    fprintf(gen->output_file, "    mul x9, x9, x%d\n", reg_der);              // x9 = (a/b) * b
+    fprintf(gen->output_file, "    sub x%d, x%d, x9\n", target_reg, reg_izq); // target = a - x9
   }
   else if (strcmp(o->op, "unario") == 0)
   {
+    // Unario -x
     fprintf(gen->output_file, "    neg x%d, x%d\n", target_reg, reg_izq);
   }
+  // Operaciones de comparacion retornan 1 o 0
   else if (strcmp(o->op, ">") == 0)
   {
-    fprintf(gen->output_file, "    cmp x%d, x%d\n", reg_izq, reg_der);
-    fprintf(gen->output_file, "    cset x%d, gt\n", target_reg);
+    fprintf(gen->output_file, "    cmp x%d, x%d\n", reg_izq, reg_der); // Se realiza la comparacion
+    fprintf(gen->output_file, "    cset x%d, gt\n", target_reg);       // gt = greater than
   }
   else if (strcmp(o->op, "<") == 0)
   {
     fprintf(gen->output_file, "    cmp x%d, x%d\n", reg_izq, reg_der);
-    fprintf(gen->output_file, "    cset x%d, lt\n", target_reg);
+    fprintf(gen->output_file, "    cset x%d, lt\n", target_reg); // lt = less than
   }
   else if (strcmp(o->op, ">=") == 0)
   {
     fprintf(gen->output_file, "    cmp x%d, x%d\n", reg_izq, reg_der);
-    fprintf(gen->output_file, "    cset x%d, ge\n", target_reg);
+    fprintf(gen->output_file, "    cset x%d, ge\n", target_reg); // ge = greater or equal
   }
   else if (strcmp(o->op, "<=") == 0)
   {
     fprintf(gen->output_file, "    cmp x%d, x%d\n", reg_izq, reg_der);
-    fprintf(gen->output_file, "    cset x%d, le\n", target_reg);
+    fprintf(gen->output_file, "    cset x%d, le\n", target_reg); // le = less or equal
   }
   else if (strcmp(o->op, "==") == 0)
   {
     fprintf(gen->output_file, "    cmp x%d, x%d\n", reg_izq, reg_der);
-    fprintf(gen->output_file, "    cset x%d, eq\n", target_reg);
+    fprintf(gen->output_file, "    cset x%d, eq\n", target_reg); // eq = equal
   }
   else if (strcmp(o->op, "!=") == 0)
   {
     fprintf(gen->output_file, "    cmp x%d, x%d\n", reg_izq, reg_der);
-    fprintf(gen->output_file, "    cset x%d, ne\n", target_reg);
+    fprintf(gen->output_file, "    cset x%d, ne\n", target_reg); // ne = not equal
   }
+  // Operaciones logicas
   else if (strcmp(o->op, "&&") == 0)
   {
+    // AND
     fprintf(gen->output_file, "    and x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
   }
   else if (strcmp(o->op, "||") == 0)
   {
+    // OR
     fprintf(gen->output_file, "    orr x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
   }
   else if (strcmp(o->op, "!") == 0)

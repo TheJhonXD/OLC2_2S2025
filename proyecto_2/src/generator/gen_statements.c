@@ -8,12 +8,14 @@
 #include "ast/sentencias/block.h"
 #include <string.h>
 
-// Generar sentencia
+// Generar codigo para cualquier sentencia
+// Basicamente revisa que tipo de sentencia es y llama a la funcion correcta
 void generate_statement(CodeGenerator *gen, NodoBase *stmt)
 {
   if (stmt == NULL)
     return;
 
+  // Comparar el nombre del nodo para saber que tipo de sentencia es
   if (strcmp(stmt->nombre, "Declaration") == 0)
   {
     generate_declaration(gen, stmt);
@@ -30,73 +32,80 @@ void generate_statement(CodeGenerator *gen, NodoBase *stmt)
   {
     generate_block(gen, (Block *)stmt);
   }
-  else if (strcmp(stmt->nombre, "If") == 0)
+  else if (strcmp(stmt->nombre, "IF") == 0)
   {
     generate_if(gen, stmt);
   }
-}
-
-// Generar bloque de sentencias
-void generate_block(CodeGenerator *gen, Block *b)
-{
-  StmtCell *c = b->head;
-  while (c != NULL)
+  else if (strcmp(stmt->nombre, "Function") == 0)
   {
-    generate_statement(gen, c->stmt);
-    c = c->next;
+    fprintf(gen->output_file, "    # TODO: Function\n");
   }
 }
 
-// Declaracion de variable
+// Generar un bloque de sentencias, las que van dentor de llaves
+void generate_block(CodeGenerator *gen, Block *b)
+{
+  StmtCell *c = b->head; // Empezar desde la primera sentencia
+  while (c != NULL)
+  {
+    generate_statement(gen, c->stmt);
+    c = c->next; // Avanzar a la siguiente sentencia
+  }
+}
+
+// Declarar una variable
 void generate_declaration(CodeGenerator *gen, NodoBase *decl)
 {
   Declaration *d = (Declaration *)decl;
 
   fprintf(gen->output_file, "    # Declaracion: %s\n", d->id);
 
-  // Agregar a la tabla y obtener su offset
+  // Registrar la variable en la tabla para saber donde esta en memoria
+  // Retorna el offset donde se va a guardar (0, 16, 32, etc)
   int offset = agregar_variable(gen, d->id, d->tipo);
 
-  // Reservar espacio (16 bytes para que esté alineado)
-  fprintf(gen->output_file, "    sub sp, sp, #16\n");
-  gen->reg_manager->sp_offset += 16;
+  // Pedir un registro para trabajar
+  int reg = allocate_register(gen->reg_manager);
 
-  // Si tiene valor inicial
-  if (d->expr)
+  // Si tiene valor inicial (int x = 5) generar codigo para calcularlo
+  if (d->expr != NULL)
   {
-    int reg = allocate_register(gen->reg_manager);
-    generate_expression(gen, d->expr, reg);
-    // Guardar en el offset correcto
-    fprintf(gen->output_file, "    str x%d, [sp, #%d]\n", reg, offset);
-    free_register(gen->reg_manager, reg);
+    generate_expression(gen, d->expr, reg); // Resultado queda en el registro
   }
   else
   {
-    // Inicializar en 0
-    fprintf(gen->output_file, "    mov x1, #0\n");
-    fprintf(gen->output_file, "    str x1, [sp, #%d]\n", offset);
+    // Si no tiene valor, inicializar en 0
+    fprintf(gen->output_file, "    mov x%d, #0\n", reg);
   }
+
+  // Guardar el valor en memoria usando str (store)
+  // [sp, #offset], es decir direccion = stack pointer + offset
+  fprintf(gen->output_file, "    str x%d, [sp, #%d]\n", reg, offset);
+
+  // Liberar el registro para que se pueda reutilizar
+  free_register(gen->reg_manager, reg);
 }
 
-// Asignacion
+// Asignar un nuevo valor a una variable existente
 void generate_assignment(CodeGenerator *gen, NodoBase *assign)
 {
   Assigment *a = (Assigment *)assign;
 
   fprintf(gen->output_file, "    # Asignacion: %s\n", a->id);
 
-  // Buscar offset de la variable
+  // Buscar donde esta la variable en memoria
   int offset = buscar_variable(gen, a->id);
 
   if (offset == -1)
   {
+    // Si la variable no existe se marca error y se sale
     fprintf(gen->output_file, "    # ERROR: Variable %s no existe\n", a->id);
     return;
   }
 
+  // Calcular el nuevo valor y guardarlo en la misma posicion
   int reg = allocate_register(gen->reg_manager);
   generate_expression(gen, a->expr, reg);
-  // Guardar en el offset correcto
   fprintf(gen->output_file, "    str x%d, [sp, #%d]\n", reg, offset);
   free_register(gen->reg_manager, reg);
 }
@@ -108,19 +117,20 @@ void generate_print(CodeGenerator *gen, NodoBase *print)
 
   fprintf(gen->output_file, "    # Print\n");
 
+  // Calcular el valor a imprimir
   int reg = allocate_register(gen->reg_manager);
   generate_expression(gen, p->expr, reg);
 
-  // Imprimir el valor
+  // Llamar a la funcion printValue
   fprintf(gen->output_file, "    mov x1, x%d\n", reg);
-  fprintf(gen->output_file, "    bl printValue\n");
+  fprintf(gen->output_file, "    bl printValue\n"); // bl = branch and link, es decir llamar a la función
 
-  // Imprimir salto de linea
-  fprintf(gen->output_file, "    mov x8, #64\n");
-  fprintf(gen->output_file, "    mov x0, #1\n");
-  fprintf(gen->output_file, "    adr x1, newline\n");
-  fprintf(gen->output_file, "    mov x2, #1\n");
-  fprintf(gen->output_file, "    svc #0\n");
+  // Esto es un syscall write
+  fprintf(gen->output_file, "    mov x8, #64\n");     // syscall 64 = write
+  fprintf(gen->output_file, "    mov x0, #1\n");      // fd = 1 (stdout)
+  fprintf(gen->output_file, "    adr x1, newline\n"); // direccion del string "\n"
+  fprintf(gen->output_file, "    mov x2, #1\n");      // longitud = 1
+  fprintf(gen->output_file, "    svc #0\n");          // ejecutar syscall
 
   free_register(gen->reg_manager, reg);
 }

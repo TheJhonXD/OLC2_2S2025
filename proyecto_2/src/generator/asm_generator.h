@@ -38,6 +38,8 @@ typedef struct
     TablaVariables *var_table;
     char *string_literals[100];
     int string_count;
+    double float_literals[100];
+    int float_count;
 } CodeGenerator;
 
 // Funciones principales

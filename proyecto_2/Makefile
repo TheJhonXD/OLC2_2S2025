@@ -5,8 +5,7 @@ BISON   := bison
 FLEX    := flex
 
 # ARM64 tools
-AS_ARM  := aarch64-linux-gnu-as
-LD_ARM  := aarch64-linux-gnu-ld
+GCC_ARM  := aarch64-linux-gnu-gcc
 QEMU    := qemu-aarch64
 
 CFLAGS  := -I$(BUILD) -Isrc -Isrc/headers -Wall -Wextra -g
@@ -47,12 +46,11 @@ run: $(BUILD)/calc
 # Compilar ARM64: make asm FILE=program.txt
 asm: $(BUILD)/calc
 	@./$(BUILD)/calc $(FILE)
-	@$(AS_ARM) -o $(basename $(FILE)).o $(basename $(FILE)).s
-	@$(LD_ARM) -o $(basename $(FILE)) $(basename $(FILE)).o
+	$(GCC_ARM) -static -o $(basename $(FILE)) $(basename $(FILE)).s
 
 # Ejecutar ARM64: make exec FILE=program.txt
 exec: asm
 	@$(QEMU) ./$(basename $(FILE))
 
 clean:
-	@rm -rf $(BUILD) *.o *.s program output test_if test_completo
+	@rm -rf $(BUILD) *.o program output test_if test_completo

@@ -1,77 +1,37 @@
-.global _start
+.global main
+.extern printf
 .text
 
 printValue:
-    # x1 = valor a imprimir (número entero)
     stp x29, x30, [sp, #-16]!
     mov x29, sp
-    sub sp, sp, #32
-
-    # Convertir número a string
-    mov x2, x1
-    add x3, sp, #16
-    mov x4, #10
-    mov x5, #0
-
-convert_loop:
-    udiv x6, x2, x4
-    msub x7, x6, x4, x2
-    add x7, x7, #48
-    strb w7, [x3, x5]
-    add x5, x5, #1
-    mov x2, x6
-    cbnz x2, convert_loop
-
-    # Invertir string (los dígitos quedan al revés)
-    mov x6, #0
-    sub x7, x5, #1
-
-reverse_loop:
-    cmp x6, x7
-    bge print_number
-    ldrb w8, [x3, x6]
-    ldrb w9, [x3, x7]
-    strb w9, [x3, x6]
-    strb w8, [x3, x7]
-    add x6, x6, #1
-    sub x7, x7, #1
-    b reverse_loop
-
-print_number:
-    mov x8, #64
-    mov x0, #1
-    mov x1, x3
-    mov x2, x5
-    svc #0
-
-    add sp, sp, #32
+    mov x1, x0
+    adr x0, int_fmt
+    bl printf
     ldp x29, x30, [sp], #16
     ret
 
 printString:
-    # x1 = puntero al string
     stp x29, x30, [sp, #-16]!
     mov x29, sp
-
-    # Calcular longitud del string
-    mov x2, x1
-    mov x3, #0
-strlen_loop:
-    ldrb w4, [x2, x3]
-    cbz w4, print_str
-    add x3, x3, #1
-    b strlen_loop
-
-print_str:
-    mov x8, #64
-    mov x0, #1
-    mov x2, x3
-    svc #0
-
+    mov x1, x0
+    adr x0, str_fmt
+    bl printf
     ldp x29, x30, [sp], #16
     ret
 
-_start:
+printFloat:
+    stp x29, x30, [sp, #-16]!
+    mov x29, sp
+    fmov d0, x0
+    adr x0, float_fmt
+    bl printf
+    ldp x29, x30, [sp], #16
+    ret
+
+main:
+    stp x29, x30, [sp, #-16]!
+    mov x29, sp
     sub sp, sp, #1600
     # Declaracion: x
     mov x2, #2
@@ -82,53 +42,87 @@ _start:
     mov x1, #3
     str x1, [sp, #16]
     # Declaracion: z
-    mov x1, #5
+    mov x2, #10
+    mov x3, #5
+    sdiv x1, x2, x3
     str x1, [sp, #32]
     # Asignacion: y
     mov x1, #100
     str x1, [sp, #16]
     # Print
-    mov x1, #0
-    mov x1, x1
+    ldr x1, [sp, #0]
+    mov x0, x1
     bl printValue
-    mov x8, #64
-    mov x0, #1
-    adr x1, newline
-    mov x2, #1
-    svc #0
+    adr x0, newline
+    bl printf
     # Print
     ldr x1, [sp, #16]
-    mov x1, x1
+    mov x0, x1
     bl printValue
-    mov x8, #64
-    mov x0, #1
-    adr x1, newline
-    mov x2, #1
-    svc #0
+    adr x0, newline
+    bl printf
     # Print
     adr x1, str_0
-    mov x1, x1
+    mov x0, x1
     bl printString
-    mov x8, #64
-    mov x0, #1
-    adr x1, newline
-    mov x2, #1
-    svc #0
+    adr x0, newline
+    bl printf
     # Print
     mov x1, #5
-    mov x1, x1
+    mov x0, x1
     bl printValue
-    mov x8, #64
-    mov x0, #1
-    adr x1, newline
-    mov x2, #1
-    svc #0
+    adr x0, newline
+    bl printf
+    # Declaracion: pi
+    adr x1, float_0
+    ldr x1, [x1]
+    str x1, [sp, #48]
+    # Declaracion: xz
+    adr x1, float_1
+    ldr x1, [x1]
+    str x1, [sp, #64]
+    # Print
+    ldr x2, [sp, #48]
+    ldr x3, [sp, #64]
+    fmov d0, x2
+    fmov d1, x3
+    fadd d0, d0, d1
+    fmov x1, d0
+    mov x0, x1
+    bl printFloat
+    adr x0, newline
+    bl printf
+    # Print
+    ldr x1, [sp, #64]
+    mov x0, x1
+    bl printFloat
+    adr x0, newline
+    bl printf
+    # Print
+    adr x1, str_1
+    mov x0, x1
+    bl printString
+    adr x0, newline
+    bl printf
+    # Print
+    ldr x1, [sp, #32]
+    mov x0, x1
+    bl printValue
+    adr x0, newline
+    bl printf
 
     # Salir
-    mov x8, #93
+    add sp, sp, #1600
+    ldp x29, x30, [sp], #16
     mov x0, #0
-    svc #0
+    ret
 
 .data
-newline: .ascii "\n"
+int_fmt: .asciz "%d"
+str_fmt: .asciz "%s"
+float_fmt: .asciz "%f"
+newline: .asciz "\n"
 str_0: .asciz "Hola mundo"
+str_1: .asciz "holita"
+float_0: .double 3.141624
+float_1: .double 2.500000

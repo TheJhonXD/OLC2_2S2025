@@ -57,7 +57,16 @@ void generate_primitive(CodeGenerator *gen, NodoBase *prim, int target_reg)
   {
     // Se convierte a su valor ascii
     fprintf(gen->output_file, "    mov x%d, #%d\n", target_reg, (int)s.val.c);
-  }// lo float 
+  }
+  else if (s.tipo == T_FLOAT)
+  {
+    // Para floats/double lo guardo en la sección .data y se carga su valor
+    int float_idx = gen->float_count;
+    gen->float_literals[gen->float_count++] = s.val.f;
+    
+    fprintf(gen->output_file, "    adr x%d, float_%d\n", target_reg, float_idx);
+    fprintf(gen->output_file, "    ldr x%d, [x%d]\n", target_reg, target_reg);
+  }
   else
   {
     fprintf(gen->output_file, "    mov x%d, #0\n", target_reg);
@@ -89,6 +98,10 @@ void generate_operation(CodeGenerator *gen, NodoBase *op, int target_reg)
 {
   Operation *o = (Operation *)op;
 
+  // Detectar si la operacion hace alguna operaicon con floats
+  TipoExpresion tipo = get_expression_type(gen, op);
+  int is_float = (tipo == T_FLOAT);
+
   // Dos registros , uno para cada lado de la operacion
   int reg_izq = allocate_register(gen->reg_manager);
   int reg_der = allocate_register(gen->reg_manager);
@@ -100,23 +113,64 @@ void generate_operation(CodeGenerator *gen, NodoBase *op, int target_reg)
   // Operaciones aritmeticas basicas
   if (strcmp(o->op, "+") == 0)
   {
-    // add = sumar
-    fprintf(gen->output_file, "    add x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
+    if (is_float)
+    {
+      // Mover a registros d, operar y devolver a x
+      fprintf(gen->output_file, "    fmov d0, x%d\n", reg_izq);
+      fprintf(gen->output_file, "    fmov d1, x%d\n", reg_der);
+      fprintf(gen->output_file, "    fadd d0, d0, d1\n");
+      fprintf(gen->output_file, "    fmov x%d, d0\n", target_reg);
+    }
+    else
+    {
+      // add = sumar enteros
+      fprintf(gen->output_file, "    add x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
+    }
   }
   else if (strcmp(o->op, "-") == 0)
   {
-    // sub = restar
-    fprintf(gen->output_file, "    sub x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
+    if (is_float)
+    {
+      fprintf(gen->output_file, "    fmov d0, x%d\n", reg_izq);
+      fprintf(gen->output_file, "    fmov d1, x%d\n", reg_der);
+      fprintf(gen->output_file, "    fsub d0, d0, d1\n");
+      fprintf(gen->output_file, "    fmov x%d, d0\n", target_reg);
+    }
+    else
+    {
+      // sub = restar enteros
+      fprintf(gen->output_file, "    sub x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
+    }
   }
   else if (strcmp(o->op, "*") == 0)
   {
-    // mul = multiplicar
-    fprintf(gen->output_file, "    mul x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
+    if (is_float)
+    {
+      fprintf(gen->output_file, "    fmov d0, x%d\n", reg_izq);
+      fprintf(gen->output_file, "    fmov d1, x%d\n", reg_der);
+      fprintf(gen->output_file, "    fmul d0, d0, d1\n");
+      fprintf(gen->output_file, "    fmov x%d, d0\n", target_reg);
+    }
+    else
+    {
+      // mul = multiplicar enteros
+      fprintf(gen->output_file, "    mul x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
+    }
   }
   else if (strcmp(o->op, "/") == 0)
   {
-    // sdiv = division con signo (signed division)
-    fprintf(gen->output_file, "    sdiv x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
+    if (is_float)
+    {
+      fprintf(gen->output_file, "    fmov d0, x%d\n", reg_izq);
+      fprintf(gen->output_file, "    fmov d1, x%d\n", reg_der);
+      fprintf(gen->output_file, "    fdiv d0, d0, d1\n");
+      fprintf(gen->output_file, "    fmov x%d, d0\n", target_reg);
+    }
+    else
+    {
+      // sdiv = division con signo (signed division)
+      fprintf(gen->output_file, "    sdiv x%d, x%d, x%d\n", target_reg, reg_izq, reg_der);
+    }
   }
   else if (strcmp(o->op, "%") == 0)
   {
@@ -181,4 +235,45 @@ void generate_operation(CodeGenerator *gen, NodoBase *op, int target_reg)
 
   free_register(gen->reg_manager, reg_izq);
   free_register(gen->reg_manager, reg_der);
+}
+
+// Funcion para detectar el tipo de una expresion
+TipoExpresion get_expression_type(CodeGenerator *gen, NodoBase *expr)
+{
+  if (expr == NULL)
+    return T_INTEGER;
+
+  if (strcmp(expr->nombre, "Primitive") == 0)
+  {
+    Primitive *p = (Primitive *)expr;
+    return p->s.tipo;
+  }
+  else if (strcmp(expr->nombre, "Variable") == 0)
+  {
+    Variable *v = (Variable *)expr;
+    int offset = buscar_variable(gen, v->id);
+    if (offset != -1)
+    {
+      for (int i = 0; i < gen->var_table->count; i++)
+      {
+        if (gen->var_table->vars[i].offset == offset)
+        {
+          return gen->var_table->vars[i].tipo;
+        }
+      }
+    }
+  }
+  else if (strcmp(expr->nombre, "Operation") == 0)
+  {
+    Operation *o = (Operation *)expr;
+    // Si alguno de los operandos es float entonces toda la operacion es float al final
+    TipoExpresion tipo_izq = get_expression_type(gen, o->izq);
+    TipoExpresion tipo_der = get_expression_type(gen, o->der);
+    if (tipo_izq == T_FLOAT || tipo_der == T_FLOAT)
+    {
+      return T_FLOAT;
+    }
+  }
+
+  return T_INTEGER;
 }

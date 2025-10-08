@@ -7,6 +7,7 @@
 #include "ast/sentencias/print.h"
 #include "ast/sentencias/block.h"
 #include "ast/expresiones/primitivos.h"
+#include "ast/expresiones/variable.h"
 #include <string.h>
 
 // Generar codigo para cualquier sentencia
@@ -118,38 +119,31 @@ void generate_print(CodeGenerator *gen, NodoBase *print)
 
   fprintf(gen->output_file, "    # Print\n");
 
-  // Verificar si es un string literal
-  int is_string = 0;
-  if (strcmp(p->expr->nombre, "Primitive") == 0)
-  {
-    Primitive *prim = (Primitive *)p->expr;
-    if (prim->s.tipo == T_STRING)
-    {
-      is_string = 1;
-    }
-  }
+  // Detectar el tipo de la expresion usando la funcion auxiliar
+  TipoExpresion tipo = get_expression_type(gen, p->expr);
 
   // Calcular el valor a imprimir
   int reg = allocate_register(gen->reg_manager);
   generate_expression(gen, p->expr, reg);
 
-  // Llamar a la funcion printValue o printString segun el tipo
-  fprintf(gen->output_file, "    mov x1, x%d\n", reg);
-  if (is_string)
+  // Llamar a la funcion correcta segun el tipo
+  fprintf(gen->output_file, "    mov x0, x%d\n", reg);
+  if (tipo == T_STRING)
   {
     fprintf(gen->output_file, "    bl printString\n");
   }
+  else if (tipo == T_FLOAT)
+  {
+    fprintf(gen->output_file, "    bl printFloat\n");
+  }
   else
   {
-    fprintf(gen->output_file, "    bl printValue\n"); // bl = branch and link, es decir llamar a la función
+    fprintf(gen->output_file, "    bl printValue\n");
   }
 
-  // Esto es un syscall write
-  fprintf(gen->output_file, "    mov x8, #64\n");     // syscall 64 = write
-  fprintf(gen->output_file, "    mov x0, #1\n");      // fd = 1 (stdout)
-  fprintf(gen->output_file, "    adr x1, newline\n"); // direccion del string "\n"
-  fprintf(gen->output_file, "    mov x2, #1\n");      // longitud = 1
-  fprintf(gen->output_file, "    svc #0\n");          // ejecutar syscall
+  // Imprimir newline usando printf
+  fprintf(gen->output_file, "    adr x0, newline\n");
+  fprintf(gen->output_file, "    bl printf\n");
 
   free_register(gen->reg_manager, reg);
 }

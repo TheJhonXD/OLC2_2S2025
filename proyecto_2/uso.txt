@@ -8,3 +8,12 @@ Instalación de GTK3
 
 sudo apt update
 sudo apt install libgtk-3-dev build-essential
+
+// Compilar y ejecutar a manita
+aarch64-linux-gnu-as -o hello.o hello.s
+aarch64-linux-gnu-ld -static -e _start -o hello hello.o
+qemu-aarch64 ./hello
+
+// Compilar y ejecutar con Makefile
+make exec FILE=nombre_entrada.txt
+

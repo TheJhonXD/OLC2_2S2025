@@ -57,7 +57,7 @@ void generate_primitive(CodeGenerator *gen, NodoBase *prim, int target_reg)
   {
     // Se convierte a su valor ascii
     fprintf(gen->output_file, "    mov x%d, #%d\n", target_reg, (int)s.val.c);
-  }
+  }// lo float 
   else
   {
     fprintf(gen->output_file, "    mov x%d, #0\n", target_reg);

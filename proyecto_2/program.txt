@@ -1,10 +1,10 @@
-int x = 2;
+int x = 2 + 5;
 int y = 3;
 int z = 5;
 y = 100;
-print(x);
+print(false);
 print(y);
-print("Hola");
+print("Hola mundo");
 print(5);
 
 

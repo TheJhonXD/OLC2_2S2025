@@ -6,6 +6,7 @@
 #include "ast/sentencias/assigment.h"
 #include "ast/sentencias/print.h"
 #include "ast/sentencias/block.h"
+#include "ast/expresiones/primitivos.h"
 #include <string.h>
 
 // Generar codigo para cualquier sentencia
@@ -117,13 +118,31 @@ void generate_print(CodeGenerator *gen, NodoBase *print)
 
   fprintf(gen->output_file, "    # Print\n");
 
+  // Verificar si es un string literal
+  int is_string = 0;
+  if (strcmp(p->expr->nombre, "Primitive") == 0)
+  {
+    Primitive *prim = (Primitive *)p->expr;
+    if (prim->s.tipo == T_STRING)
+    {
+      is_string = 1;
+    }
+  }
+
   // Calcular el valor a imprimir
   int reg = allocate_register(gen->reg_manager);
   generate_expression(gen, p->expr, reg);
 
-  // Llamar a la funcion printValue
+  // Llamar a la funcion printValue o printString segun el tipo
   fprintf(gen->output_file, "    mov x1, x%d\n", reg);
-  fprintf(gen->output_file, "    bl printValue\n"); // bl = branch and link, es decir llamar a la función
+  if (is_string)
+  {
+    fprintf(gen->output_file, "    bl printString\n");
+  }
+  else
+  {
+    fprintf(gen->output_file, "    bl printValue\n"); // bl = branch and link, es decir llamar a la función
+  }
 
   // Esto es un syscall write
   fprintf(gen->output_file, "    mov x8, #64\n");     // syscall 64 = write

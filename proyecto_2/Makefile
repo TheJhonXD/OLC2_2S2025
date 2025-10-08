@@ -1,14 +1,17 @@
 # ==== Config ====
 BUILD   := build
 CC      := gcc
-BISON   := bison           # en Windows con win_flex_bison usa: win_bison
-FLEX    := flex            # en Windows con win_flex_bison usa: win_flex
+BISON   := bison
+FLEX    := flex
 
-# Incluye donde se generan headers del parser y todo src/
+# ARM64 tools
+AS_ARM  := aarch64-linux-gnu-as
+LD_ARM  := aarch64-linux-gnu-ld
+QEMU    := qemu-aarch64
+
 CFLAGS  := -I$(BUILD) -Isrc -Isrc/headers -Wall -Wextra -g
 LDFLAGS :=
 
-# Rutas reales según tu árbol
 PARSER := src/parser/parser.y
 LEXER  := src/parser/lexer.l
 
@@ -17,7 +20,7 @@ SRC_DIRS := src src/entorno src/ast src/ast/expresiones src/ast/sentencias src/g
 SRCS := $(foreach d,$(SRC_DIRS),$(wildcard $(d)/*.c))
 SRCS += main.c   
 
-.PHONY: all run clean
+.PHONY: all run clean asm exec
 
 all: $(BUILD)/calc
 
@@ -41,5 +44,15 @@ $(BUILD)/calc: $(BUILD)/parser.tab.c $(BUILD)/lex.yy.c $(SRCS) | $(BUILD)
 run: $(BUILD)/calc
 	@./$(BUILD)/calc $(FILE)
 
+# Compilar ARM64: make asm FILE=program.txt
+asm: $(BUILD)/calc
+	@./$(BUILD)/calc $(FILE)
+	@$(AS_ARM) -o $(basename $(FILE)).o $(basename $(FILE)).s
+	@$(LD_ARM) -o $(basename $(FILE)) $(basename $(FILE)).o
+
+# Ejecutar ARM64: make exec FILE=program.txt
+exec: asm
+	@$(QEMU) ./$(basename $(FILE))
+
 clean:
-	@rm -rf $(BUILD)
+	@rm -rf $(BUILD) *.o *.s program output test_if test_completo

@@ -1,0 +1,7 @@
+// Función sin parámetros y sin return
+public int saludar() {
+    int x = 42;
+    print(x);
+}
+
+saludar();

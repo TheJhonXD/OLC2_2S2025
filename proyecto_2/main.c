@@ -47,7 +47,9 @@ int main(int argc, char **argv)
     Env_init(&global, NULL, "GLOBAL");
     if (g_root)
     {
+        // Comentado: solo generar código, no interpretar
         // (void)NodoBase_Ejecutar(g_root, &ast, &global);
+
         printf("Generando código ARM64...\n");
 
         // Determinar nombre del archivo de salida

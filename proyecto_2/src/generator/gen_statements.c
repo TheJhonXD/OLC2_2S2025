@@ -2,6 +2,7 @@
 #include "gen_expressions.h"
 #include "gen_utils.h"
 #include "gen_control_flow.h"
+#include "gen_functions.h"
 #include "ast/sentencias/declaration.h"
 #include "ast/sentencias/assigment.h"
 #include "ast/sentencias/print.h"
@@ -40,7 +41,11 @@ void generate_statement(CodeGenerator *gen, NodoBase *stmt)
   }
   else if (strcmp(stmt->nombre, "Function") == 0)
   {
-    fprintf(gen->output_file, "    # TODO: Function\n");
+    generate_function_decl(gen, stmt);
+  }
+  else if (strcmp(stmt->nombre, "Return") == 0)
+  {
+    generate_return(gen, stmt);
   }
 }
 

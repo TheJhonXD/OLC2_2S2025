@@ -39,6 +39,8 @@ void Env_init(Environment *env, Environment *ant, const char *id)
   env->Tabla = NULL;
   env->Functions = NULL;
   env->id = id ? id : "ENV";
+  // Heredar el offset del padre para que las variables locales no sobreescriban las del padre
+  env->offset = ant ? ant->offset : 0;
 }
 
 void Env_free(Environment *env)

@@ -15,6 +15,8 @@
   #include "ast/sentencias/function.h"
   #include "ast/expresiones/callFunc.h"
   #include "ast/expresiones/args.h"
+  #include "ast/sentencias/return.h"
+  #include "ast/expresiones/stringValueOf.h"
 
 
   extern int yylex(void);
@@ -54,7 +56,7 @@
 %token <ch> CHAR
 %token <b> TRUE FALSE
 %token  INTEGER FLOAT TP_STRING BOOLEAN TP_CHAR
-%token PRINT IF FUNC
+%token PRINT IF FUNC RETURN STRING_VALUEOF
 
 %left '>' '<'
 %left '+' '-'
@@ -85,7 +87,9 @@ line
   | assigment end            { $$ = $1; }
   | block                    { $$ = $1; }
   | IF '(' expr ')' block    { $$ = (NodoBase*)NewIf(@1.first_line,@1.first_column,$3,$5); }
-  | function                 { $$ = $1; }  
+  | function                 { $$ = $1; }
+  | RETURN expr end          { $$ = (NodoBase*)NewReturn(@1.first_line,@1.first_column,$2); }
+  | RETURN end               { $$ = (NodoBase*)NewReturn(@1.first_line,@1.first_column,NULL); }
   ;
 
 block 
@@ -169,6 +173,9 @@ expr
   }
   | FALSE {
     $$ = (NodoBase*)NewPrimitive(@1.first_line,@1.first_column, SymBool(@1.first_line,@1.first_column,0));
+  }
+  | STRING_VALUEOF '(' expr ')' {
+    $$ = (NodoBase*)NewStringValueOf(@1.first_line,@1.first_column,$3);
   }
   ;
 

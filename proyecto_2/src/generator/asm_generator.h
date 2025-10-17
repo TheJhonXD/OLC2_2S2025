@@ -6,6 +6,7 @@
 #include <string.h>
 #include "ast/AbstractTerminal.h"
 #include "ast/sentencias/block.h"
+#include "entorno/environment.h"
 
 // Manejo de registros
 typedef struct
@@ -15,31 +16,17 @@ typedef struct
     int label_counter;
 } RegisterManager;
 
-// Info de una variable
-typedef struct
-{
-    char *nombre;
-    int offset;
-    TipoExpresion tipo;
-} VariableInfo;
-
-// Tabla de variables
-typedef struct
-{
-    VariableInfo vars[100];
-    int count;
-} TablaVariables;
-
 // Generador de codigo
 typedef struct
 {
     FILE *output_file;
     RegisterManager *reg_manager;
-    TablaVariables *var_table;
+    Environment *current_env; // Entorno actual (scope actual)
     char *string_literals[100];
     int string_count;
-    double float_literals[100];
+    double float_literals[100]; // Mantener los floats
     int float_count;
+    char *current_function; // Nombre de la función actual
 } CodeGenerator;
 
 // Funciones principales

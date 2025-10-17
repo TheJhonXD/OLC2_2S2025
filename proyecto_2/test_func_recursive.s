@@ -1,5 +1,8 @@
 .global main
 .extern printf
+.extern malloc
+.extern snprintf
+.extern strcpy
 .text
 
 printValue:
@@ -30,55 +33,54 @@ printFloat:
     ret
 
 
+# Function: factorial
+factorial:
+    stp x29, x30, [sp, #-16]!
+    mov x29, sp
+    sub sp, sp, #1600
+    # Parametro: n
+    str x0, [sp, #0]
+    # If
+    ldr x2, [sp, #0]
+    mov x3, #2
+    cmp x2, x3
+    cset x1, lt
+    cmp x1, #0
+    beq L0
+    # Return
+    mov x0, #1
+    b factorial_end
+L0:
+    # Declaracion: result
+    ldr x2, [sp, #0]
+    # Call function: factorial
+    ldr x4, [sp, #0]
+    mov x5, #1
+    sub x0, x4, x5
+    bl factorial
+    mov x3, x0
+    mul x1, x2, x3
+    str x1, [sp, #16]
+    # Return
+    ldr x0, [sp, #16]
+    b factorial_end
+factorial_end:
+    add sp, sp, #1600
+    ldp x29, x30, [sp], #16
+    ret
+
 main:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
     sub sp, sp, #1600
-    # Declaracion: x
-    mov x1, #5
+    # Declaracion: f
+    # Call function: factorial
+    mov x0, #5
+    bl factorial
+    mov x1, x0
     str x1, [sp, #0]
-    # Declaracion: y
-    mov x1, #10
-    str x1, [sp, #16]
-    # Declaracion: z
-    ldr x2, [sp, #0]
-    ldr x3, [sp, #16]
-    add x1, x2, x3
-    str x1, [sp, #32]
-    # Declaracion: resultado
-    ldr x2, [sp, #32]
-    mov x3, #2
-    mul x1, x2, x3
-    str x1, [sp, #48]
     # Print
     ldr x1, [sp, #0]
-    mov x0, x1
-    bl printValue
-    adr x0, newline
-    bl printf
-    # Print
-    ldr x1, [sp, #16]
-    mov x0, x1
-    bl printValue
-    adr x0, newline
-    bl printf
-    # Print
-    ldr x1, [sp, #32]
-    mov x0, x1
-    bl printValue
-    adr x0, newline
-    bl printf
-    # Print
-    ldr x1, [sp, #48]
-    mov x0, x1
-    bl printValue
-    adr x0, newline
-    bl printf
-    # Asignacion: y
-    mov x1, #100
-    str x1, [sp, #16]
-    # Print
-    ldr x1, [sp, #16]
     mov x0, x1
     bl printValue
     adr x0, newline

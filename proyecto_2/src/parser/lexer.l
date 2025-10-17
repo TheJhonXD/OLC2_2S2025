@@ -15,6 +15,8 @@ KW_STR   "string"
 KW_CHAR  "char"
 KW_BOOL     "boolean"
 FUNC      "public"
+KW_RETURN "return"
+KW_STRING_VALUEOF "String.valueOf"
 DIG   [0-9]
 NUM   {DIG}+(\.{DIG}+)?
 STR   \"([^\\\n]|\\.)*\"
@@ -36,6 +38,8 @@ WS  [ \t\n\r]+
 {FAL}             { return FALSE; }
 
 {FUNC}            { return FUNC; }
+{KW_RETURN}       { return RETURN; }
+{KW_STRING_VALUEOF} { return STRING_VALUEOF; }
 
 {NUM}                 { yylval.num = atof(yytext); return NUMBER; }
 {STR}                 { yylval.str = strdup(yytext + 1); yylval.str[strlen(yylval.str) - 1] = '\0'; return STRING; }

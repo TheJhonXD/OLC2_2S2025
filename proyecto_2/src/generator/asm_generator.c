@@ -9,7 +9,10 @@ CodeGenerator *init_code_generator(const char *output_filename)
     CodeGenerator *gen = malloc(sizeof(CodeGenerator));
     gen->output_file = fopen(output_filename, "w");
     gen->reg_manager = malloc(sizeof(RegisterManager));
-    gen->var_table = malloc(sizeof(TablaVariables));
+
+    // Inicializar Environment (tabla de simbolos) para el scope global
+    gen->current_env = malloc(sizeof(Environment));
+    Env_init(gen->current_env, NULL, "global");
 
     // Limpiar registros
     for (int i = 0; i < 31; i++)
@@ -20,9 +23,7 @@ CodeGenerator *init_code_generator(const char *output_filename)
     gen->reg_manager->label_counter = 0;
     gen->string_count = 0;
     gen->float_count = 0;
-
-    // Inicializar tabla de variables
-    gen->var_table->count = 0;
+    gen->current_function = NULL;
 
     write_header(gen);
     return gen;
@@ -32,14 +33,17 @@ void write_header(CodeGenerator *gen)
 {
     fprintf(gen->output_file, ".global main\n");
     fprintf(gen->output_file, ".extern printf\n");
+    fprintf(gen->output_file, ".extern malloc\n");
+    fprintf(gen->output_file, ".extern snprintf\n");
+    fprintf(gen->output_file, ".extern strcpy\n");
     fprintf(gen->output_file, ".text\n\n");
 
     // Para imprimir enteros
     fprintf(gen->output_file, "printValue:\n");
     fprintf(gen->output_file, "    stp x29, x30, [sp, #-16]!\n");
     fprintf(gen->output_file, "    mov x29, sp\n");
-    fprintf(gen->output_file, "    mov x1, x0\n");              // Segundo argumento de printf
-    fprintf(gen->output_file, "    adr x0, int_fmt\n");         // Formato %%d
+    fprintf(gen->output_file, "    mov x1, x0\n");      // Segundo argumento de printf
+    fprintf(gen->output_file, "    adr x0, int_fmt\n"); // Formato %%d
     fprintf(gen->output_file, "    bl printf\n");
     fprintf(gen->output_file, "    ldp x29, x30, [sp], #16\n");
     fprintf(gen->output_file, "    ret\n\n");
@@ -48,8 +52,8 @@ void write_header(CodeGenerator *gen)
     fprintf(gen->output_file, "printString:\n");
     fprintf(gen->output_file, "    stp x29, x30, [sp, #-16]!\n");
     fprintf(gen->output_file, "    mov x29, sp\n");
-    fprintf(gen->output_file, "    mov x1, x0\n");              // String a imprimir
-    fprintf(gen->output_file, "    adr x0, str_fmt\n");         // Formato %%s
+    fprintf(gen->output_file, "    mov x1, x0\n");      // String a imprimir
+    fprintf(gen->output_file, "    adr x0, str_fmt\n"); // Formato %%s
     fprintf(gen->output_file, "    bl printf\n");
     fprintf(gen->output_file, "    ldp x29, x30, [sp], #16\n");
     fprintf(gen->output_file, "    ret\n\n");
@@ -58,8 +62,8 @@ void write_header(CodeGenerator *gen)
     fprintf(gen->output_file, "printFloat:\n");
     fprintf(gen->output_file, "    stp x29, x30, [sp, #-16]!\n");
     fprintf(gen->output_file, "    mov x29, sp\n");
-    fprintf(gen->output_file, "    fmov d0, x0\n");             // Mover bits del registro x0 a d0
-    fprintf(gen->output_file, "    adr x0, float_fmt\n");       // Formato %%f
+    fprintf(gen->output_file, "    fmov d0, x0\n");       // Mover bits del registro x0 a d0
+    fprintf(gen->output_file, "    adr x0, float_fmt\n"); // Formato %%f
     fprintf(gen->output_file, "    bl printf\n");
     fprintf(gen->output_file, "    ldp x29, x30, [sp], #16\n");
     fprintf(gen->output_file, "    ret\n\n");
@@ -68,15 +72,34 @@ void write_header(CodeGenerator *gen)
 // Generar todo el programa
 void generate_program(CodeGenerator *gen, NodoBase *root)
 {
+    Block *b = (Block *)root;
+
+    // Primera pasada: generar todas las funciones
+    for (StmtCell *c = b->head; c; c = c->next)
+    {
+        if (c->stmt && strcmp(c->stmt->nombre, "Function") == 0)
+        {
+            generate_statement(gen, c->stmt);
+        }
+    }
+
     // main es el punto de entrada cuando usamos libc
-    fprintf(gen->output_file, "main:\n");
+    fprintf(gen->output_file, "\nmain:\n");
     fprintf(gen->output_file, "    stp x29, x30, [sp, #-16]!\n");
     fprintf(gen->output_file, "    mov x29, sp\n");
 
     // Reservar espacio en el stack para todas las variables
     fprintf(gen->output_file, "    sub sp, sp, #1600\n");
 
-    generate_statement(gen, root);
+    // Generar el código principal (todo excepto funciones)
+    for (StmtCell *c = b->head; c; c = c->next)
+    {
+        if (c->stmt && strcmp(c->stmt->nombre, "Function") != 0)
+        {
+            generate_statement(gen, c->stmt);
+        }
+    }
+
     write_footer(gen);
 }
 
@@ -95,6 +118,12 @@ void write_footer(CodeGenerator *gen)
     fprintf(gen->output_file, "str_fmt: .asciz \"%%s\"\n");
     fprintf(gen->output_file, "float_fmt: .asciz \"%%f\"\n");
     fprintf(gen->output_file, "newline: .asciz \"\\n\"\n");
+
+    // Para String.valueOf
+    fprintf(gen->output_file, ".fmt_int: .asciz \"%%d\"\n");
+    fprintf(gen->output_file, ".fmt_float: .asciz \"%%f\"\n");
+    fprintf(gen->output_file, ".str_true: .asciz \"true\"\n");
+    fprintf(gen->output_file, ".str_false: .asciz \"false\"\n");
 
     // Strings
     for (int i = 0; i < gen->string_count; i++)

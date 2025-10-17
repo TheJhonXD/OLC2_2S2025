@@ -1,9 +1,12 @@
 #include "gen_expressions.h"
 #include "gen_utils.h"
+#include "gen_functions.h"
 #include "ast/expresiones/primitivos.h"
 #include "ast/expresiones/operacion.h"
 #include "ast/expresiones/variable.h"
+#include "ast/expresiones/stringValueOf.h"
 #include <string.h>
+#include <stdio.h>
 
 // Generar codigo para una expresion
 // El resultado se deja en el registro target_reg
@@ -27,7 +30,11 @@ void generate_expression(CodeGenerator *gen, NodoBase *expr, int target_reg)
   }
   else if (strcmp(expr->nombre, "CallFunc") == 0)
   {
-    fprintf(gen->output_file, "    # TODO: CallFunc\n");
+    generate_function_call(gen, expr, target_reg);
+  }
+  else if (strcmp(expr->nombre, "StringValueOf") == 0)
+  {
+    generate_string_valueof(gen, expr, target_reg);
   }
 }
 
@@ -63,7 +70,7 @@ void generate_primitive(CodeGenerator *gen, NodoBase *prim, int target_reg)
     // Para floats/double lo guardo en la sección .data y se carga su valor
     int float_idx = gen->float_count;
     gen->float_literals[gen->float_count++] = s.val.f;
-    
+
     fprintf(gen->output_file, "    adr x%d, float_%d\n", target_reg, float_idx);
     fprintf(gen->output_file, "    ldr x%d, [x%d]\n", target_reg, target_reg);
   }
@@ -251,16 +258,11 @@ TipoExpresion get_expression_type(CodeGenerator *gen, NodoBase *expr)
   else if (strcmp(expr->nombre, "Variable") == 0)
   {
     Variable *v = (Variable *)expr;
-    int offset = buscar_variable(gen, v->id);
-    if (offset != -1)
+    // Buscar la variable en el entorno
+    Symbol sym = Env_GetVariable(gen->current_env, v->id);
+    if (sym.tipo != T_NULL)
     {
-      for (int i = 0; i < gen->var_table->count; i++)
-      {
-        if (gen->var_table->vars[i].offset == offset)
-        {
-          return gen->var_table->vars[i].tipo;
-        }
-      }
+      return sym.tipo;
     }
   }
   else if (strcmp(expr->nombre, "Operation") == 0)
@@ -276,4 +278,99 @@ TipoExpresion get_expression_type(CodeGenerator *gen, NodoBase *expr)
   }
 
   return T_INTEGER;
+}
+
+void generate_string_valueof(CodeGenerator *gen, NodoBase *expr, int target_reg)
+{
+  StringValueOf *sv = (StringValueOf *)expr;
+
+  // Evaluar la expresión interna
+  int temp_reg = allocate_register(gen->reg_manager);
+  generate_expression(gen, sv->expr, temp_reg);
+
+  // Obtener el tipo de la expresión
+  TipoExpresion tipo = get_expression_type(gen, sv->expr);
+
+  // Guardar el valor en x20 (callee-saved) porque malloc lo modificará
+  fprintf(gen->output_file, "    mov x20, x%d\n", temp_reg);
+  free_register(gen->reg_manager, temp_reg);
+
+  // Alocar espacio en el heap para el string resultante (64 bytes)
+  fprintf(gen->output_file, "    mov x0, #64\n");
+  fprintf(gen->output_file, "    bl malloc\n");
+
+  // Guardar el puntero del buffer en un registro temporal
+  int buffer_reg = allocate_register(gen->reg_manager);
+  fprintf(gen->output_file, "    mov x%d, x0\n", buffer_reg);
+
+  // Convertir según el tipo
+  if (tipo == T_INTEGER)
+  {
+    // Usar snprintf para convertir int a string
+    // snprintf(char *str, size_t size, const char *format, ...)
+    // x0 = buffer, x1 = size, x2 = formato, x3 = valor
+    // Guardar el buffer en x19 para que el snprintf no lo modifique
+    fprintf(gen->output_file, "    mov x19, x%d\n", buffer_reg);
+    fprintf(gen->output_file, "    mov x0, x19\n");
+    fprintf(gen->output_file, "    mov x1, #64\n"); // size del buffer
+    fprintf(gen->output_file, "    adr x2, .fmt_int\n");
+    fprintf(gen->output_file, "    mov x3, x20\n"); // x20 tiene el valor preservado
+    fprintf(gen->output_file, "    bl snprintf\n");
+    fprintf(gen->output_file, "    mov x%d, x19\n", target_reg); // Recuperar buffer de x19
+  }
+  else if (tipo == T_FLOAT)
+  {
+    // Usar snprintf para convertir float a string
+    // x0 = buffer, x1 = size, x2 = formato, d0 = valor float
+    fprintf(gen->output_file, "    mov x19, x%d\n", buffer_reg);
+    fprintf(gen->output_file, "    mov x0, x19\n");
+    fprintf(gen->output_file, "    mov x1, #64\n"); // size del buffer
+    fprintf(gen->output_file, "    adr x2, .fmt_float\n");
+    fprintf(gen->output_file, "    fmov d0, x20\n"); // x20 tiene el valor preservado
+    fprintf(gen->output_file, "    bl snprintf\n");
+    fprintf(gen->output_file, "    mov x%d, x19\n", target_reg); // Recuperar buffer de x19
+  }
+  else if (tipo == T_BOOLEAN)
+  {
+    // Para boolean, comparar y cargar "true" o "false"
+    int label_true = gen->reg_manager->label_counter++;
+    int label_end = gen->reg_manager->label_counter++;
+
+    fprintf(gen->output_file, "    cmp x20, #1\n"); // x20 tiene el valor preservado
+    fprintf(gen->output_file, "    b.eq .L%d\n", label_true);
+
+    // false
+    fprintf(gen->output_file, "    mov x0, x%d\n", buffer_reg);
+    fprintf(gen->output_file, "    adr x1, .str_false\n");
+    fprintf(gen->output_file, "    bl strcpy\n");
+    fprintf(gen->output_file, "    mov x%d, x0\n", target_reg); // strcpy devuelve el destino en x0
+    fprintf(gen->output_file, "    b .L%d\n", label_end);
+
+    // true
+    fprintf(gen->output_file, ".L%d:\n", label_true);
+    fprintf(gen->output_file, "    mov x0, x%d\n", buffer_reg);
+    fprintf(gen->output_file, "    adr x1, .str_true\n");
+    fprintf(gen->output_file, "    bl strcpy\n");
+    fprintf(gen->output_file, "    mov x%d, x0\n", target_reg); // strcpy devuelve el destino en x0
+
+    fprintf(gen->output_file, ".L%d:\n", label_end);
+  }
+  else if (tipo == T_STRING)
+  {
+    // Si ya es string, simplemente copiar
+    fprintf(gen->output_file, "    mov x0, x%d\n", buffer_reg);
+    fprintf(gen->output_file, "    mov x1, x20\n"); // x20 tiene el valor preservado
+    fprintf(gen->output_file, "    bl strcpy\n");
+    fprintf(gen->output_file, "    mov x%d, x0\n", target_reg); // strcpy devuelve el destino en x0
+  }
+  else if (tipo == T_CHAR)
+  {
+    // Para char, crear string de 1 carácter
+    fprintf(gen->output_file, "    strb w20, [x%d]\n", buffer_reg); // x20 tiene el valor preservado
+    fprintf(gen->output_file, "    mov w1, #0\n");
+    fprintf(gen->output_file, "    strb w1, [x%d, #1]\n", buffer_reg);
+    fprintf(gen->output_file, "    mov x%d, x%d\n", target_reg, buffer_reg);
+  }
+
+  free_register(gen->reg_manager, buffer_reg);
 }

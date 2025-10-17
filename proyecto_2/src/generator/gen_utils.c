@@ -27,45 +27,45 @@ void free_register(RegisterManager *manager, int reg)
   }
 }
 
-// Agregar una variable a la tabla de simbolos
+// Agregar una variable al entorno actual
 // Retorna el offset (posicion en memoria) donde se va a guardar
 int agregar_variable(CodeGenerator *gen, char *nombre, TipoExpresion tipo)
 {
-  // Primero revisar si ya existe (para evitar duplicados)
-  for (int i = 0; i < gen->var_table->count; i++)
-  {
-    if (strcmp(gen->var_table->vars[i].nombre, nombre) == 0)
-    {
-      return gen->var_table->vars[i].offset; // Ya existe, retornar su offset
-    }
-  }
-
-  int indice = gen->var_table->count;
-
-  // Calcular donde va en memoria
+  // Calcular el offset actual
   // Cada variable ocupa 16 bytes porque ARM64 requiere alineamiento de 16
-  // Variable 0 -> offset 0, variable 1 -> offset 16, variable 2 -> offset 32, etc
-  int offset = indice * 16;
+  int offset = gen->current_env->offset;
 
-  gen->var_table->vars[indice].nombre = strdup(nombre);
-  gen->var_table->vars[indice].offset = offset;
-  gen->var_table->vars[indice].tipo = tipo;
-  gen->var_table->count++;
+  // Crear el Symbol para guardar en el entorno
+  Symbol sym;
+  sym.tipo = tipo;
+  sym.val.i = offset; // Guardamos el offset en el campo val.i
+  sym.lin = 0;
+  sym.col = 0;
+
+  // Guardar la variable en el entorno actual
+  Env_SaveVariable(gen->current_env, nombre, sym);
+
+  // Incrementar el offset del entorno para la siguiente variable
+  gen->current_env->offset += 16;
 
   return offset;
 }
 
-// Buscar variable por nombre
+// Buscar variable por nombre en el entorno actual y sus padres
 int buscar_variable(CodeGenerator *gen, char *nombre)
 {
-  for (int i = 0; i < gen->var_table->count; i++)
+  // Buscar en el entorno actual y padres
+  Symbol sym = Env_GetVariable(gen->current_env, nombre);
+
+  // Si no se encuentra, Env_GetVariable retorna un Symbol con tipo NULL
+  // En ese caso retornamos -1
+  if (sym.tipo == T_NULL)
   {
-    if (strcmp(gen->var_table->vars[i].nombre, nombre) == 0)
-    {
-      return gen->var_table->vars[i].offset;
-    }
+    return -1;
   }
-  return -1;
+
+  // El offset está guardado en sym.val.i
+  return sym.val.i;
 }
 
 // Agregar string literal

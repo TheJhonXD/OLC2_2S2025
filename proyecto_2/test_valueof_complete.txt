@@ -1,0 +1,30 @@
+// Test completo de String.valueOf
+
+int numero = 42;
+string s1 = String.valueOf(numero);
+print("Entero 42: ");
+print(s1);
+
+string s2 = String.valueOf(999);
+print("Literal 999: ");
+print(s2);
+
+boolean b1 = true;
+string s3 = String.valueOf(b1);
+print("Boolean true: ");
+print(s3);
+
+boolean b2 = false;
+string s4 = String.valueOf(b2);
+print("Boolean false: ");
+print(s4);
+
+ // Flotante
+float num = 8.85;
+string s5 = String.valueOf(num);
+print("Flotante: ");
+print(s5);
+
+// suma
+
+// print("HOLA" + " mundo" + String.valueOf(5));

@@ -1,5 +1,10 @@
 .global main
 .extern printf
+.extern malloc
+.extern strlen
+.extern strcpy
+.extern strcat
+.extern snprintf
 .text
 
 printValue:
@@ -28,6 +33,7 @@ printFloat:
     bl printf
     ldp x29, x30, [sp], #16
     ret
+
 
 main:
     stp x29, x30, [sp, #-16]!
@@ -122,6 +128,10 @@ int_fmt: .asciz "%d"
 str_fmt: .asciz "%s"
 float_fmt: .asciz "%f"
 newline: .asciz "\n"
+.fmt_int: .asciz "%d"
+.fmt_float: .asciz "%f"
+.str_true: .asciz "true"
+.str_false: .asciz "false"
 str_0: .asciz "Hola mundo"
 str_1: .asciz "holita"
 float_0: .double 3.141624

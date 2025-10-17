@@ -1,0 +1,11 @@
+// Función recursiva: factorial
+public int factorial(int n) {
+    if (n < 2) {
+        return 1;
+    }
+    int result = n * factorial(n - 1);
+    return result;
+}
+
+int f = factorial(5);
+print(f);

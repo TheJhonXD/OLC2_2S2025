@@ -25,6 +25,7 @@ typedef struct Environment
     VarNode *Tabla;
     const char *id; // Nombre del scope
     FuncNode *Functions;
+    int offset; // Offset actual para variables locales en este scope
 } Environment;
 
 void Env_init(Environment *env, Environment *ant, const char *id);

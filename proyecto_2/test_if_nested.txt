@@ -1,0 +1,14 @@
+int x = 10;
+
+if (x > 5) {
+    int y = 20;
+    
+    if (y > 15) {
+        int z = 30;
+        print(z);
+    }
+    
+    print(y);
+}
+
+print(x);

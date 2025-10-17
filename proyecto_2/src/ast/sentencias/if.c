@@ -22,7 +22,7 @@ static Symbol Ejecutar(NodoBase *self, AST *ast, void *env)
   if (v.val.b == 1)
   {
     Environment if_stmt;
-    Env_init(&if_stmt, NULL, "IF_STMT");
+    Env_init(&if_stmt, E, "IF_STMT");
     (void)NodoBase_Ejecutar(d->bloque, ast, &if_stmt);
     Env_free(&if_stmt);
   }

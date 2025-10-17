@@ -29,6 +29,7 @@ printFloat:
     ldp x29, x30, [sp], #16
     ret
 
+
 main:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
@@ -62,3 +63,7 @@ int_fmt: .asciz "%d"
 str_fmt: .asciz "%s"
 float_fmt: .asciz "%f"
 newline: .asciz "\n"
+.fmt_int: .asciz "%d"
+.fmt_float: .asciz "%f"
+.str_true: .asciz "true"
+.str_false: .asciz "false"
